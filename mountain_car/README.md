@@ -1,36 +1,40 @@
+## Important note
+
+The skeleton of this code was generated using AI along with the expected inputs and outputs
+as comments since I am not all that confident with OOPS in python yet. And the plotting part
+was done by AI as well. This was just a learning project to understand the concepts I had learnt
+from the book.
+
 # Mountain Car — Semi-Gradient SARSA with Tile Coding
 
-An implementation of the classic Mountain Car control problem, using linear
-function approximation (tile coding) and semi-gradient SARSA. Built as a
-bridge between tabular RL (Gridworld) and full function approximation
-(CartPole, Lunar Lander) — the state space here is continuous, so a table
-of Q-values isn't an option, but the problem is still small enough to solve
-without a neural net.
+This is an implementation of the Mountain Car problem from the Sutton and Barto
+book. The way it is solved in this implementation is by using tile coding and semi-gradient
+SARSA. This is because tabular learning doesn't work here like it does in Gridworld
+since the state space is continuous (can't store all possible states in a table) but it's
+still small enough to solve without a neural net.
 
 ## The problem
 
-An underpowered car sits in a valley between two hills and needs to reach
-a flag at the top of the right hill. The engine alone isn't strong enough
-to drive straight up — the agent has to learn to reverse up the left hill
-first to build momentum, then use that momentum to escape the valley.
+A car doesn't have enough power to get out of the two hills it sits between.
+The task is to make the agent learn to reverse up the hill behind to gain enough
+momentum to get on top of the other hill.
 
 State: `(position, velocity)`, both continuous.
 Actions: `reverse`, `none`, `forward`.
-Reward: `-1` per step until the goal is reached, so the agent is implicitly
-learning to reach the flag in as few steps as possible.
+Reward: `-1` per step until the goal is reached (to punish long episode lengths)
 
-## Why tile coding instead of a neural net
+## What tile coding does
 
-The state space is only 2D, so a full neural function approximator is
-overkill — tile coding gives a much simpler, faster-to-train linear
-approximator that still generalizes across nearby states.
+Since the state space is only 2D, it is simple to divide the space into a grid
+and therefore discretize the state space, where each tile of the grid also
+has tilings which are just the base tiles offset diagonally toward the other states
+so that there is some sort of continuity between states in adjacent tiles instead of
+a sudden change.
 
-Tile coding discretizes `(position, velocity)` into a grid of tiles, then
-overlays several offset copies of that grid ("tilings"). A given state
-activates one tile per tiling — several active features per state instead
-of a table lookup — with nearby states sharing some but not all of those
-tiles. This is what lets the Q-function generalize smoothly instead of
-treating every state independently.
+Each tile has a spot in the feature vector and is fired when a state is inside that tile.
+Therefore each state has a subset of tiles it causes to fire, and each of those tiles are also
+part of the weight vector, and therefore helps us update the weights in accordance to the rewards
+we get according to the policy.
 
 **Implementation specifics:**
 - 8 tilings, 8×8 tiles per tiling
@@ -41,19 +45,11 @@ treating every state independently.
   and since features are binary, `Q(s,a)` is just a sum over the active
   tile weights rather than a full dot product
 
-## Why SARSA over Q-learning
+## What makes this "semi-gradient" SARSA
 
-SARSA is on-policy: it updates toward the value of the action the policy
-actually takes next, rather than the greedy max like Q-learning does. With
-function approximation, on-policy updates are more stable — the "semi" in
-semi-gradient means the update ignores how the target itself depends on
-the weights (since Q is linear in `w`, the gradient is just the feature
-vector, which keeps the update cheap and well-behaved).
-
-This implementation also takes a shortcut for the update step: rather than
-computing the gradient over the full feature vector, it updates `w` only
-at the indices returned by `get_active_tiles`, since every other entry in
-the gradient is zero anyway.
+The update rule used to nudge the weight towards optimality ignores the fact that the target itself
+is a function of the weight, so the gradient is just the feature vector and this also keeps the
+computation simple.
 
 ## Files
 
@@ -70,9 +66,9 @@ Trains for 2500 episodes with epsilon decaying by 0.99 per episode, then
 plots the episode-length learning curve and the learned cost-to-go surface
 over `(position, velocity)`.
 
-## What I'd try next
+## Results
 
-- Compare against a Q-learning (off-policy) version on the same tile coder
-- Try eligibility traces (SARSA(λ)) to speed up early learning
-- Sweep tile resolution / number of tilings to see the generalization vs.
-  precision trade-off directly
+![alt text](image.png)
+![alt text](image-1.png)
+
+This closely resembles the results produed in the book
